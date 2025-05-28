@@ -30,23 +30,36 @@ def get_video_id(url):
     return match.group(1) if match else None
 
 def fetch_transcript(video_id):
-    @retry(
-        stop=stop_after_attempt(6),
-        wait=wait_fixed(2),
-        retry=retry_if_exception_type(Exception),
-        reraise=True
-    )
-    def try_fetch_transcript():
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        if transcript_list:
-            full_text = " ".join([item['text'] for item in transcript_list])
-            return full_text if full_text.strip() else None
-        return None
-    
     try:
+        # Check available transcripts
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript = transcript_list.find_transcript(['en'])  # Prefer English transcript
+        @retry(
+            stop=stop_after_attempt(6),
+            wait=wait_fixed(2),
+            retry=retry_if_exception_type(Exception),
+            reraise=True
+        )
+        def try_fetch_transcript():
+            proxies = {
+                "http": st.secrets.get("HTTP_PROXY", None),
+                "https": st.secrets.get("HTTPS_PROXY", None),
+            }
+            transcript_data = transcript.fetch(
+                proxies=proxies if proxies["http"] or proxies["https"] else None
+            )
+            if transcript_data:
+                full_text = " ".join([item['text'] for item in transcript_data])
+                return full_text if full_text.strip() else None
+            return None
+        
         return try_fetch_transcript()
     except Exception as e:
-        st.error(f"Failed to fetch transcript after 6 attempts: {str(e)}")
+        st.error(
+            f"Failed to fetch transcript for video ID {video_id}: {str(e)}\n"
+            "This may be due to YouTube blocking the request or the video lacking captions. "
+            "Please check if captions are available on YouTube or try a different video."
+        )
         return None
 
 def parse_response(output):
@@ -157,7 +170,6 @@ def render_flashcards(flashcards):
     components.html(full_html, height=180 * ((len(flashcards) + 1) // 2))
 
 def main():
-    # Add custom CSS for background
     st.markdown("""
         <style>
         .stApp {
@@ -233,7 +245,6 @@ For Flashcards, use format: "1. Term: Term text\n- Definition: Definition text"
                 else:
                     st.write("No flashcards found.")
 
-    # Add footer with attribution
     st.markdown("""
         <div class="footer">
             Project by Preran S Gowda, VVCE, Mysuru<br>
