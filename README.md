@@ -13,6 +13,11 @@ This Streamlit app fetches transcripts from YouTube videos and uses a GPT model 
 - **Modern Design**: Features a gradient background (light blue to soft purple) for a clean, professional look.
 - **Error Handling**: Provides user-friendly messages for invalid URLs or failed transcript fetching.
 
+## Screenshots
+![img1](https://github.com/user-attachments/assets/75bfdaf4-501e-4229-914e-da586cd6cd54)
+![img2](https://github.com/user-attachments/assets/7db95bca-f4bd-4c2e-bbc5-665bf5847da9)
+
+
 ## Prerequisites
 - **Python 3.8+**
 - **Git** (for cloning the repository)
