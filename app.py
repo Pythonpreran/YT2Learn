@@ -4,6 +4,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import re
 import streamlit.components.v1 as components
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+import random
 
 def gpt_generate(prompt: str) -> str:
     url = st.secrets["PROXY_URL"]
@@ -34,6 +35,13 @@ def fetch_transcript(video_id):
         # Check available transcripts
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         transcript = transcript_list.find_transcript(['en'])  # Prefer English transcript
+        
+        # Get list of proxies from secrets
+        http_proxies = st.secrets.get("HTTP_PROXIES", "").split(",") if st.secrets.get("HTTP_PROXIES") else []
+        https_proxies = st.secrets.get("HTTPS_PROXIES", "").split(",") if st.secrets.get("HTTPS_PROXIES") else []
+        http_proxies = [proxy.strip() for proxy in http_proxies if proxy.strip()]
+        https_proxies = [proxy.strip() for proxy in https_proxies if proxy.strip()]
+        
         @retry(
             stop=stop_after_attempt(6),
             wait=wait_fixed(2),
@@ -41,13 +49,15 @@ def fetch_transcript(video_id):
             reraise=True
         )
         def try_fetch_transcript():
-            proxies = {
-                "http": st.secrets.get("HTTP_PROXY", None),
-                "https": st.secrets.get("HTTPS_PROXY", None),
-            }
-            transcript_data = transcript.fetch(
-                proxies=proxies if proxies["http"] or proxies["https"] else None
-            )
+            # Select a random proxy if available, otherwise use None
+            proxy = None
+            if http_proxies and https_proxies:
+                proxy_index = random.randint(0, min(len(http_proxies), len(https_proxies)) - 1)
+                proxy = {
+                    "http": http_proxies[proxy_index],
+                    "https": https_proxies[proxy_index]
+                }
+            transcript_data = transcript.fetch(proxies=proxy)
             if transcript_data:
                 full_text = " ".join([item['text'] for item in transcript_data])
                 return full_text if full_text.strip() else None
