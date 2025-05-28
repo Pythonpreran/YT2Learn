@@ -6,7 +6,7 @@ import streamlit.components.v1 as components
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 def gpt_generate(prompt: str) -> str:
-    url = "https://xyris.vercel.app/api/llm-models/openai/gpt-4/"
+    url = st.secrets["PROXY_URL"]
     headers = {"Content-Type": "application/json"}
     @retry(
         stop=stop_after_attempt(6),
